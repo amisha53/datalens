@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataLens — CSV Analytics Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+</head>
+<body>
+<nav>
+  <a class="logo" href="#">Data<span>Lens</span></a>
+  <div class="nav-r">
+    <a href="#upload">Upload</a>
+    <a href="#about">About</a>
+    <span class="nav-pill">CS 433</span>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-eyebrow">CS 433 — Data Analytics · SEMO 2024</div>
+  <h1>
+    <span class="t1">Upload data.</span>
+    <span class="t2">See the story.</span>
+  </h1>
+  <p class="hero-sub">Drop any <strong>CSV file</strong> and instantly get charts, summary statistics, and AI-generated natural language insights. No setup required.</p>
+  <div class="hero-chips">
+    <span class="chip">Drag & drop CSV upload</span>
+    <span class="chip">Auto-generated charts</span>
+    <span class="chip">Summary statistics</span>
+    <span class="chip">AI narrative insights</span>
+    <span class="chip">Data preview table</span>
+  </div>
+</section>
+
+<div class="upload-area" id="upload">
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+    <div class="dz-icon">📂</div>
+    <div class="dz-title">Drop your CSV here</div>
+    <div class="dz-sub">or <span onclick="document.getElementById('fileInput').click();event.stopPropagation()">browse to upload</span> — CSV files only</div>
+    <input type="file" id="fileInput" accept=".csv" onchange="handleFile(this.files[0])">
+  </div>
+</div>
+
+<div class="samples-area">
+  <div class="divider"><div class="div-line"></div><span class="div-txt">// or try a sample dataset</span><div class="div-line"></div></div>
+  <div class="sample-grid">
+    <div class="scard" onclick="loadSample('sales')">
+      <div class="scard-title">Monthly Sales</div>
+      <div class="scard-desc">Revenue, orders by region and month</div>
+      <div class="scard-meta">12 rows · 5 columns</div>
+    </div>
+    <div class="scard" onclick="loadSample('students')">
+      <div class="scard-title">Student Grades</div>
+      <div class="scard-desc">GPA, attendance, major, year</div>
+      <div class="scard-meta">20 rows · 4 columns</div>
+    </div>
+    <div class="scard" onclick="loadSample('jobs')">
+      <div class="scard-title">Tech Job Market</div>
+      <div class="scard-desc">Salaries, roles, experience level</div>
+      <div class="scard-meta">15 rows · 5 columns</div>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+  <div class="dash-topbar">
+    <div class="dash-info">
+      <div class="dash-name" id="dashName">—</div>
+      <div class="dash-meta" id="dashMeta">—</div>
+    </div>
+    <div class="dash-actions">
+      <button class="btn-insights" id="insightsBtn" onclick="getInsights()">Generate Insights</button>
+      <button class="btn-reset" onclick="resetDash()">New File</button>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val p" id="kpiRows">—</div><div class="kpi-lbl">Total rows</div></div>
+    <div class="kpi"><div class="kpi-val" id="kpiCols">—</div><div class="kpi-lbl">Columns</div></div>
+    <div class="kpi"><div class="kpi-val t" id="kpiNum">—</div><div class="kpi-lbl">Numeric cols</div></div>
+    <div class="kpi"><div class="kpi-val" id="kpiMiss">—</div><div class="kpi-lbl">Missing values</div></div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="cc-top"><span class="cc-title" id="chart1Title">distribution</span><span class="cc-badge" id="chart1Badge">bar</span></div>
+      <canvas id="chart1"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="cc-top"><span class="cc-title" id="chart2Title">breakdown</span><span class="cc-badge">doughnut</span></div>
+      <canvas id="chart2"></canvas>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="tc-header">
+      <span class="tc-title">// data preview</span>
+      <span class="tc-note" id="previewNote">—</span>
+    </div>
+    <div class="table-wrap"><table id="dataTable"></table></div>
+  </div>
+
+  <div class="ai-card">
+    <div class="ai-top">
+      <div class="ai-pulse"></div>
+      <span class="ai-top-lbl">// ai narrative insights</span>
+    </div>
+    <div id="aiIdle"><p class="ai-idle">Click "Generate Insights" above to analyze this dataset with AI.</p></div>
+    <div class="ai-loading" id="aiLoading"><div class="ai-spinner"></div><span class="ai-loading-t">analyzing dataset...</span></div>
+    <div class="ai-out" id="aiOut"></div>
+  </div>
+</div>
+
+<section id="about" style="padding:4rem 5vw;border-top:1px solid var(--border);max-width:1140px;margin:0 auto">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:start">
+    <div>
+      <div style="font-family:'Fira Code',monospace;font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5rem">// about</div>
+      <h2 style="font-size:clamp(1.6rem,2.5vw,2.4rem);font-weight:700;letter-spacing:-.04em;color:var(--text);margin-bottom:.85rem;line-height:1.1">Built for CS 433 — Data Analytics</h2>
+      <p style="font-size:.84rem;font-weight:300;color:var(--text2);line-height:1.9">In CS 433 we spent a lot of time cleaning and visualizing datasets in Python and Excel. I wanted to make that exploration step faster — just drop a file and immediately see the shape of the data before you start writing any code. The AI layer summarizes patterns that would otherwise take several minutes to spot manually.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div style="padding:.75rem .9rem;background:var(--bg2);border:1px solid var(--border);border-radius:6px"><strong style="font-size:.78rem;color:var(--text);display:block;margin-bottom:.2rem">For data analysts</strong><span style="font-size:.72rem;color:var(--text2)">Quickly profile a dataset before writing ETL code — understand distributions, missing values, and column types at a glance.</span></div>
+      <div style="padding:.75rem .9rem;background:var(--bg2);border:1px solid var(--border);border-radius:6px"><strong style="font-size:.78rem;color:var(--text);display:block;margin-bottom:.2rem">For business analysts</strong><span style="font-size:.72rem;color:var(--text2)">Upload an export from any system (CRM, ERP, ticketing) and instantly communicate findings without needing Python or SQL.</span></div>
+      <div style="padding:.75rem .9rem;background:var(--bg2);border:1px solid var(--border);border-radius:6px"><strong style="font-size:.78rem;color:var(--text);display:block;margin-bottom:.2rem">Tech stack</strong><span style="font-size:.72rem;color:var(--text2)">Vanilla JS · Chart.js · PapaParse · AI inference API. No frameworks, no build step, deploys as a single HTML file.</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>DataLens · Tarunima Amisha · 2026</p>
+  <p><a href="https://github.com/amisha53">github.com/amisha53</a> · SEMO CS</p>
+</footer>
+
+<script src="js/app.js"></script>
+</body>
+</html>
